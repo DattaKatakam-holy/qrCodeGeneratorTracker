@@ -13,6 +13,7 @@ class QRGenerator {
     initializeElements() {
         // Main elements
         this.qrTextArea = document.getElementById('qrText');
+        this.qrNameInput = document.getElementById('qrName');
         this.generateBtn = document.getElementById('generateBtn');
         this.qrResult = document.getElementById('qrResult');
         this.downloadBtn = document.getElementById('downloadBtn');
@@ -118,9 +119,15 @@ class QRGenerator {
 
     async generateQRCode() {
         const text = this.qrTextArea.value.trim();
+        const name = this.qrNameInput.value.trim();
         
         if (!text) {
             alert('Please enter some text or a URL to generate QR code.');
+            return;
+        }
+        
+        if (!name) {
+            alert('Please enter a name/reference for this QR code.');
             return;
         }
 
@@ -129,7 +136,7 @@ class QRGenerator {
 
         try {
             // Create QR code entry in Firebase
-            const qrId = await FirebaseManager.createQRCode(text, this.selectedLogo);
+            const qrId = await FirebaseManager.createQRCode(text, name, this.selectedLogo);
             this.currentQRId = qrId;
             
             // Get redirect URL for QR code
@@ -310,9 +317,15 @@ class QRGenerator {
             return;
         }
 
+        // Create filename with name and timestamp
+        const qrName = this.qrNameInput.value.trim();
+        const safeName = qrName.replace(/[^a-zA-Z0-9\-_\s]/g, '').replace(/\s+/g, '-');
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const filename = safeName ? `${safeName}-${timestamp}.png` : `qr-code-${timestamp}.png`;
+
         // Create download link
         const link = document.createElement('a');
-        link.download = `qr-code-${Date.now()}.png`;
+        link.download = filename;
         link.href = this.currentCanvas.toDataURL();
         
         // Trigger download
@@ -320,7 +333,7 @@ class QRGenerator {
         link.click();
         document.body.removeChild(link);
         
-        console.log('QR code downloaded');
+        console.log('QR code downloaded:', filename);
     }
 
     async copyQRLink() {
@@ -360,8 +373,8 @@ class QRGenerator {
             }
 
             const recentHTML = recentQRs.map(qr => {
-                const shortText = qr.originalText.length > 50 ? 
-                    qr.originalText.substring(0, 50) + '...' : qr.originalText;
+                const shortText = qr.originalText.length > 40 ? 
+                    qr.originalText.substring(0, 40) + '...' : qr.originalText;
                 
                 return `
                     <div class="recent-item" onclick="qrGenerator.loadQRCode('${qr.id}')">
@@ -369,6 +382,7 @@ class QRGenerator {
                             <canvas width="60" height="60" data-qr-id="${qr.id}"></canvas>
                         </div>
                         <div class="recent-info">
+                            <div class="recent-name">${qr.name || 'Unnamed QR Code'}</div>
                             <div class="recent-text">${shortText}</div>
                             <div class="recent-stats">
                                 Scans: ${qr.scanCount || 0} | Created: ${FirebaseManager.formatTimestamp(qr.createdAt).split(' ')[0]}
@@ -440,6 +454,7 @@ class QRGenerator {
 
             // Load QR data into interface
             this.qrTextArea.value = qrData.originalText;
+            this.qrNameInput.value = qrData.name || '';
             this.currentQRId = qrId;
             
             // Set logo selection

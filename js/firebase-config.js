@@ -24,11 +24,12 @@ try {
 // Database helper functions
 const FirebaseManager = {
     // Create new QR code entry
-    async createQRCode(originalText, logoPath = null) {
+    async createQRCode(originalText, name, logoPath = null) {
         try {
             const qrId = this.generateUniqueId();
             const qrData = {
                 id: qrId,
+                name: name,
                 originalText: originalText,
                 logoPath: logoPath,
                 scanCount: 0,
