@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic QR Code Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Basic Icons - Replace Font Awesome */
+        .fas, .fa { font-family: Arial, sans-serif; }
+        .fa-edit:before { content: "✏️"; }
+        .fa-image:before { content: "🖼️"; }
+        .fa-qrcode:before { content: "⬜"; }
+        .fa-magic:before { content: "✨"; }
+        .fa-download:before { content: "⬇️"; }
+        .fa-copy:before { content: "📋"; }
+        .fa-history:before { content: "🕒"; }
+        .fa-cloud-upload-alt:before { content: "☁️"; }
+        .fa-ban:before { content: "🚫"; }
+        .fa-check:before { content: "✅"; }
+        .fa-arrow-left:before { content: "⬅️"; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-section">
+                <img src="assets/websiteLogo.png" alt="Website Logo" class="website-logo">
+                <h1>Dynamic QR Code Generator</h1>
+            </div>
+            <p class="subtitle">Create trackable QR codes with custom logos and monitor scan analytics</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="card">
+                    <h2><i class="fas fa-edit"></i> Content Input</h2>
+                    <div class="input-group">
+                        <label for="qrText">Enter your text or meeting link:</label>
+                        <textarea 
+                            id="qrText" 
+                            placeholder="https://meet.google.com/abc-defg-hij or any text you want to encode..."
+                            rows="3"
+                        ></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logo Selection Section -->
+            <section class="logo-section">
+                <div class="card">
+                    <h2><i class="fas fa-image"></i> Logo Selection</h2>
+                    <div class="logo-options">
+                        <div class="default-logos">
+                            <h3>Default Logos:</h3>
+                            <div class="logo-grid">
+                                <div class="logo-option" data-logo="assets/holyLogo.png">
+                                    <img src="assets/holyLogo.png" alt="Holy Logo" class="logo-preview">
+                                    <span>Holy Logo</span>
+                                </div>
+                                <div class="logo-option" data-logo="assets/websiteLogo.png">
+                                    <img src="assets/websiteLogo.png" alt="Website Logo" class="logo-preview">
+                                    <span>Website Logo</span>
+                                </div>
+                                <div class="logo-option no-logo" data-logo="none">
+                                    <div class="no-logo-icon">
+                                        <i class="fas fa-ban"></i>
+                                    </div>
+                                    <span>No Logo</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="custom-logo">
+                            <h3>Custom Logo:</h3>
+                            <div class="file-upload">
+                                <input type="file" id="logoUpload" accept="image/*">
+                                <label for="logoUpload" class="upload-btn">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    Upload Custom Logo
+                                </label>
+                                <div id="customLogoPreview" class="custom-preview"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QR Generation Section -->
+            <section class="generation-section">
+                <div class="card">
+                    <h2><i class="fas fa-qrcode"></i> QR Code Generation</h2>
+                    <div class="generation-controls">
+                        <button id="generateBtn" class="generate-btn">
+                            <i class="fas fa-magic"></i>
+                            Generate QR Code
+                        </button>
+                        <div class="qr-settings">
+                            <div class="setting-group">
+                                <label for="qrSize">Size:</label>
+                                <select id="qrSize">
+                                    <option value="256">256x256</option>
+                                    <option value="512" selected>512x512</option>
+                                    <option value="1024">1024x1024</option>
+                                </select>
+                            </div>
+                            <div class="setting-group">
+                                <label for="errorLevel">Error Correction:</label>
+                                <select id="errorLevel">
+                                    <option value="L">Low</option>
+                                    <option value="M" selected>Medium</option>
+                                    <option value="Q">Quartile</option>
+                                    <option value="H">High</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="qrResult" class="qr-result">
+                        <div class="qr-placeholder">
+                            <i class="fas fa-qrcode"></i>
+                            <p>Your QR code will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Download & Analytics Section -->
+            <section class="download-section">
+                <div class="card">
+                    <h2><i class="fas fa-download"></i> Download & Analytics</h2>
+                    <div class="download-controls" style="display: none;">
+                        <div class="download-buttons">
+                            <button id="downloadBtn" class="download-btn">
+                                <i class="fas fa-download"></i>
+                                Download PNG
+                            </button>
+                            <button id="copyLinkBtn" class="copy-btn">
+                                <i class="fas fa-copy"></i>
+                                Copy QR Link
+                            </button>
+                        </div>
+                        
+                        <div class="analytics">
+                            <div class="stat-card">
+                                <div class="stat-number" id="scanCount">0</div>
+                                <div class="stat-label">Total Scans</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="createdDate">-</div>
+                                <div class="stat-label">Created</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="lastScan">Never</div>
+                                <div class="stat-label">Last Scan</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent QR Codes -->
+            <section class="recent-section">
+                <div class="card">
+                    <h2><i class="fas fa-history"></i> Recent QR Codes</h2>
+                    <div id="recentQRs" class="recent-list">
+                        <p class="no-recent">No recent QR codes. Generate one to get started!</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2026 Dynamic QR Code Generator. Track your QR code engagement with ease.</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>Generating your QR code...</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="lib/qrcode.min.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/qr-generator.js"></script>
+</body>
+</html>
