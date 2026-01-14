@@ -21,7 +21,7 @@ class QRRedirectManager {
             const qrData = await FirebaseManager.getQRCode(this.qrId);
             
             if (!qrData) {
-                this.showError('QR code not found or has expired.');
+                this.showError('QR code not found or has expired.' + this.qrId);
                 return;
             }
 
