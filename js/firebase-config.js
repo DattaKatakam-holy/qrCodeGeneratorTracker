@@ -95,9 +95,13 @@ try {
     
     // Test database connection
     window.database.ref('.info/connected').on('value', (snapshot) => {
+        const wasAvailable = databaseAvailable;
         databaseAvailable = snapshot.val() === true;
-        if (!databaseAvailable) {
+        
+        if (!databaseAvailable && wasAvailable) {
             console.warn('Firebase database disconnected - using local storage fallback');
+        } else if (databaseAvailable && !wasAvailable) {
+            console.log('Firebase database reconnected');
         }
     });
     
