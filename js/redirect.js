@@ -17,16 +17,54 @@ class QRRedirectManager {
         }
 
         try {
-            // Get QR code data from Firebase
-            const qrData = await FirebaseManager.getQRCode(this.qrId);
+            // Get QR code data from Firebase or localStorage
+            let qrData = null;
+            
+            // First try Firebase if available
+            if (window.FirebaseManager && typeof window.FirebaseManager.getQRCode === 'function') {
+                try {
+                    qrData = await window.FirebaseManager.getQRCode(this.qrId);
+                } catch (error) {
+                    console.log('Firebase unavailable, trying localStorage fallback');
+                }
+            }
+            
+            // If Firebase failed, try localStorage fallback directly
+            if (!qrData) {
+                try {
+                    // Try to access localStorage directly with the same encryption key approach
+                    const localQRs = await SecurityUtils.CryptoManager.getItem('qr-codes') || {};
+                    qrData = localQRs[this.qrId] || null;
+                } catch (error) {
+                    console.log('localStorage access failed:', error);
+                    
+                    // Final fallback - try unencrypted localStorage (legacy support)
+                    try {
+                        const unencryptedData = localStorage.getItem('qr-codes');
+                        if (unencryptedData) {
+                            const parsedData = JSON.parse(unencryptedData);
+                            qrData = parsedData[this.qrId] || null;
+                        }
+                    } catch (legacyError) {
+                        console.log('Legacy localStorage also failed:', legacyError);
+                    }
+                }
+            }
             
             if (!qrData) {
-                this.showError('QR code not found or has expired.');
+                this.showError('QR code not found or has expired. This may be due to a database connection issue.');
                 return;
             }
 
-            // Increment scan count
-            await FirebaseManager.incrementScanCount(this.qrId);
+            // Try to increment scan count (if Firebase is available)
+            try {
+                if (window.FirebaseManager && typeof window.FirebaseManager.incrementScanCount === 'function') {
+                    await window.FirebaseManager.incrementScanCount(this.qrId);
+                }
+            } catch (error) {
+                console.log('Could not increment scan count (Firebase unavailable):', error);
+                // Continue anyway - scanning still works without analytics
+            }
             
             // Show brief loading message
             const sanitizedText = SecurityUtils.truncateText(qrData.originalText, 50);
@@ -40,7 +78,7 @@ class QRRedirectManager {
 
         } catch (error) {
             console.error('Redirect error:', error);
-            this.showError('Unable to process your request. Please try again.');
+            this.showError('Unable to process your request. Please try again later.');
         }
     }
 

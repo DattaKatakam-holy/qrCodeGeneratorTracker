@@ -145,22 +145,22 @@ const SecurityUtils = {
     
     // Crypto utilities for secure local storage
     CryptoManager: {
-        // Generate or get session encryption key
+        // Generate or get persistent encryption key (works across pages)
         async getOrCreateKey() {
-            let keyData = sessionStorage.getItem('app_crypto_key');
+            let keyData = localStorage.getItem('app_crypto_key_v2');
             
             if (!keyData) {
-                // Generate new key for this session
+                // Generate new key for this domain
                 const key = await window.crypto.subtle.generateKey(
                     { name: 'AES-GCM', length: 256 },
                     true,
                     ['encrypt', 'decrypt']
                 );
                 
-                // Export key and store in sessionStorage
+                // Export key and store in localStorage for cross-page access
                 const exportedKey = await window.crypto.subtle.exportKey('raw', key);
                 keyData = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
-                sessionStorage.setItem('app_crypto_key', keyData);
+                localStorage.setItem('app_crypto_key_v2', keyData);
                 
                 return key;
             } else {
