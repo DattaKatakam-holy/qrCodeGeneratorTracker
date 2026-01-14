@@ -131,6 +131,45 @@ const FirebaseStatus = {
 
 // Database helper functions
 const FirebaseManager = {
+    // Check for duplicate QR codes based on text and name
+    async checkForDuplicate(originalText, name) {
+        try {
+            if (typeof firebase !== 'undefined' && window.database) {
+                // Firebase approach - get recent QR codes and check for duplicates
+                const snapshot = await window.database.ref('qr-codes')
+                    .orderByChild('createdAt')
+                    .limitToLast(50) // Check last 50 QR codes for duplicates
+                    .once('value');
+                
+                let duplicate = null;
+                snapshot.forEach((childSnapshot) => {
+                    const qrData = childSnapshot.val();
+                    if (qrData && 
+                        qrData.originalText === originalText && 
+                        qrData.name === name) {
+                        duplicate = qrData;
+                    }
+                });
+                
+                return duplicate;
+            } else {
+                // Local storage approach
+                const localQRs = await SecurityUtils.CryptoManager.getItem('qr-codes') || {};
+                
+                // Find duplicate by comparing text and name
+                for (const [qrId, qrData] of Object.entries(localQRs)) {
+                    if (qrData.originalText === originalText && qrData.name === name) {
+                        return qrData;
+                    }
+                }
+                return null;
+            }
+        } catch (error) {
+            console.error('Error checking for duplicates:', error);
+            return null; // If error, allow creation
+        }
+    },
+
     // Create new QR code entry
     async createQRCode(originalText, name, logoPath = null) {
         try {

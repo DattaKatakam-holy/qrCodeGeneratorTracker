@@ -152,6 +152,29 @@ class QRGenerator {
         this.generateBtn.disabled = true;
 
         try {
+            // Check for existing duplicate QR code
+            const existingQR = await FirebaseManager.checkForDuplicate(text, name);
+            
+            if (existingQR) {
+                // Show confirmation dialog for duplicate
+                const confirmCreate = confirm(
+                    `A QR code with this text and name already exists!\n\n` +
+                    `Name: "${existingQR.name}"\n` +
+                    `Created: ${FirebaseManager.formatTimestamp(existingQR.createdAt)}\n` +
+                    `Scans: ${existingQR.scanCount || 0}\n\n` +
+                    `Do you want to:\n` +
+                    `• Click "OK" to load the existing QR code\n` +
+                    `• Click "Cancel" to create a new duplicate QR code`
+                );
+                
+                if (confirmCreate) {
+                    // Load existing QR code instead of creating new one
+                    await this.loadQRCode(existingQR.id);
+                    return;
+                }
+                // If user clicks Cancel, continue to create a new duplicate
+            }
+            
             // Create QR code entry in Firebase
             const qrId = await FirebaseManager.createQRCode(text, name, this.selectedLogo);
             this.currentQRId = qrId;
