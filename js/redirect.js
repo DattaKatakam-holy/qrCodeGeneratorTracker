@@ -23,12 +23,36 @@ class QRRedirectManager {
         console.log('Looking for QR ID:', this.qrId);
 
         try {
-            // Get QR code data from Firebase or localStorage
+            // Get QR code data from Firebase, localStorage, or URL fallback
             let qrData = null;
             let dataSource = 'none';
             
-            // First try Firebase if available
-            if (window.FirebaseManager && typeof window.FirebaseManager.getQRCode === 'function') {
+            // For mobile devices, prioritize URL fallback data first
+            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile && this.fallbackData) {
+                console.log('Mobile device detected, trying URL fallback first...');
+                try {
+                    const decodedData = atob(decodeURIComponent(this.fallbackData));
+                    const fallbackQRData = JSON.parse(decodedData);
+                    
+                    // Convert to expected format
+                    qrData = {
+                        id: this.qrId,
+                        name: fallbackQRData.name,
+                        originalText: fallbackQRData.text,
+                        createdAt: fallbackQRData.created,
+                        scanCount: 0
+                    };
+                    dataSource = 'url_fallback';
+                    console.log('Data found in URL fallback (mobile priority)');
+                } catch (fallbackError) {
+                    console.log('URL fallback failed:', fallbackError.message);
+                }
+            }
+            
+            // If no URL fallback data or not mobile, try Firebase
+            if (!qrData && window.FirebaseManager && typeof window.FirebaseManager.getQRCode === 'function') {
                 try {
                     console.log('Attempting Firebase access...');
                     qrData = await window.FirebaseManager.getQRCode(this.qrId);
@@ -39,11 +63,9 @@ class QRRedirectManager {
                 } catch (error) {
                     console.log('Firebase unavailable:', error.message);
                 }
-            } else {
-                console.log('FirebaseManager not available');
             }
             
-            // If Firebase failed, try localStorage fallback directly
+            // Try localStorage fallback if Firebase failed
             if (!qrData) {
                 console.log('Trying localStorage fallback...');
                 try {
@@ -61,7 +83,7 @@ class QRRedirectManager {
                 } catch (error) {
                     console.log('Encrypted localStorage access failed:', error.message);
                     
-                    // Final fallback - try unencrypted localStorage (legacy support)
+                    // Try unencrypted localStorage (legacy support)
                     try {
                         console.log('Trying unencrypted localStorage...');
                         const unencryptedData = localStorage.getItem('qr-codes');
@@ -79,25 +101,24 @@ class QRRedirectManager {
                 }
             }
             
-            if (!qrData) {
-                // Try URL fallback data (for mobile scanning when localStorage fails)
-                if (this.fallbackData) {
-                    try {
-                        console.log('Trying URL fallback data...');
-                        const decodedData = atob(decodeURIComponent(this.fallbackData));
-                        const fallbackQRData = JSON.parse(decodedData);
-                        
-                        // Convert to expected format
-                        qrData = {
-                            id: this.qrId,
-                            name: fallbackQRData.name,
-                            originalText: fallbackQRData.text,
-                            createdAt: fallbackQRData.created,
-                            scanCount: 0
-                        };
-                        dataSource = 'url_fallback';
-                        console.log('Data found in URL fallback');
-                    } catch (fallbackError) {
+            // Final fallback - try URL data if not already tried (for non-mobile)
+            if (!qrData && this.fallbackData && !isMobile) {
+                try {
+                    console.log('Trying URL fallback data...');
+                    const decodedData = atob(decodeURIComponent(this.fallbackData));
+                    const fallbackQRData = JSON.parse(decodedData);
+                    
+                    // Convert to expected format
+                    qrData = {
+                        id: this.qrId,
+                        name: fallbackQRData.name,
+                        originalText: fallbackQRData.text,
+                        createdAt: fallbackQRData.created,
+                        scanCount: 0
+                    };
+                    dataSource = 'url_fallback';
+                    console.log('Data found in URL fallback');
+                } catch (fallbackError) {
                         console.log('URL fallback failed:', fallbackError.message);
                     }
                 }
