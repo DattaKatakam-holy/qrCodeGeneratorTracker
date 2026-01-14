@@ -16,21 +16,52 @@ class QRRedirectManager {
             return;
         }
 
-        try {
+        try {            
             // Get QR code data from Firebase
             const qrData = await FirebaseManager.getQRCode(this.qrId);
             
+            // If Firebase failed, try localStorage fallback directly
             if (!qrData) {
-                this.showError('QR code not found or has expired.' + this.qrId);
+                try {
+                    // Try to access localStorage directly with the same encryption key approach
+                    const localQRs = await SecurityUtils.CryptoManager.getItem('qr-codes') || {};
+                    qrData = localQRs[this.qrId] || null;
+                } catch (error) {
+                    console.log('localStorage access failed:', error);
+                    
+                    // Final fallback - try unencrypted localStorage (legacy support)
+                    try {
+                        const unencryptedData = localStorage.getItem('qr-codes');
+                        if (unencryptedData) {
+                            const parsedData = JSON.parse(unencryptedData);
+                            qrData = parsedData[this.qrId] || null;
+                        }
+                    } catch (legacyError) {
+                        console.log('Legacy localStorage also failed:', legacyError);
+                    }
+                }
+            }
+            
+            if (!qrData) {
+                this.showError('QR code not found or has expired. This may be due to a database connection issue.');
                 return;
             }
 
-            // Increment scan count
+            // Try to increment scan count (if Firebase is available)
+            // try {
+            //     if (window.FirebaseManager && typeof window.FirebaseManager.incrementScanCount === 'function') {
+            //         await window.FirebaseManager.incrementScanCount(this.qrId);
+            //     }
+            // } catch (error) {
+            //     console.log('Could not increment scan count (Firebase unavailable):', error);
+            //     // Continue anyway - scanning still works without analytics
+            // }
             await FirebaseManager.incrementScanCount(this.qrId);
             
             // Show brief loading message
+            const sanitizedText = SecurityUtils.truncateText(qrData.originalText, 50);
             document.querySelector('.redirect-container p').textContent = 
-                `Redirecting to: ${this.shortenText(qrData.originalText, 50)}`;
+                `Redirecting to: ${sanitizedText}`;
 
             // Redirect after a short delay (for tracking purposes)
             setTimeout(() => {
@@ -39,7 +70,7 @@ class QRRedirectManager {
 
         } catch (error) {
             console.error('Redirect error:', error);
-            this.showError('Unable to process your request. Please try again.');
+            this.showError('Unable to process your request. Please try again later.');
         }
     }
 
@@ -56,19 +87,49 @@ class QRRedirectManager {
 
     isValidURL(string) {
         try {
-            new URL(string);
+            const url = new URL(string);
+            
+            // Only allow http and https protocols
+            if (!['http:', 'https:'].includes(url.protocol)) {
+                return false;
+            }
+            
+            // Block dangerous protocols and schemes
+            const dangerousPatterns = [
+                'javascript:',
+                'data:',
+                'vbscript:',
+                'file:',
+                'ftp:'
+            ];
+            
+            const lowerString = string.toLowerCase();
+            if (dangerousPatterns.some(pattern => lowerString.includes(pattern))) {
+                return false;
+            }
+            
             return true;
         } catch (_) {
             // Also check for common URL patterns without protocol
             if (string.includes('.com') || string.includes('.org') || 
                 string.includes('.net') || string.includes('www.')) {
-                return true;
+                
+                // Try to validate with https prefix
+                try {
+                    new URL('https://' + string);
+                    return true;
+                } catch {
+                    return false;
+                }
             }
             return false;
         }
     }
 
     showTextContent(text) {
+        const sanitizedText = SecurityUtils.sanitizeText(text);
+        const escapedForButton = SecurityUtils.escapeHTML(text).replace(/'/g, '&#39;');
+        
         document.body.innerHTML = `
             <div class="content-display">
                 <div class="content-container">
@@ -77,13 +138,13 @@ class QRRedirectManager {
                         <h1>QR Code Content</h1>
                     </div>
                     <div class="content-body">
-                        <div class="content-text">${this.escapeHTML(text)}</div>
+                        <div class="content-text">${sanitizedText}</div>
                     </div>
                     <div class="content-footer">
                         <button onclick="history.back()" class="back-btn">
                             <i class="fas fa-arrow-left"></i> Go Back
                         </button>
-                        <button onclick="this.copyContent('${this.escapeHTML(text)}')" class="copy-btn">
+                        <button onclick="this.copyContent('${escapedForButton}')" class="copy-btn">
                             <i class="fas fa-copy"></i> Copy Text
                         </button>
                     </div>
@@ -242,7 +303,7 @@ class QRRedirectManager {
         // If we have a fallback URL, show manual link
         if (this.qrId) {
             manualLink.style.display = 'inline-block';
-            manualLink.href = `mailto:support@example.com?subject=QR Code Error&body=QR ID: ${this.qrId}`;
+            manualLink.href = `mailto:datta@holy-technologies.com?subject=QR Code Error&body=QR ID: ${this.qrId}`;
             manualLink.textContent = 'Contact Support';
         }
     }
