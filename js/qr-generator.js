@@ -1,3 +1,14 @@
+/**
+ * QR Code Generator with Logo Overlay and Analytics
+ * Dynamic QR Code Generator Application
+ * 
+ * Copyright © 2026 Holy Technologies GmbH, Hamburg, Germany
+ * All rights reserved.
+ * 
+ * This software and its documentation are proprietary to Holy Technologies GmbH.
+ * Unauthorized copying, distribution, or use is strictly prohibited.
+ */
+
 // QR Code Generator Main Script
 class QRGenerator {
     constructor() {

@@ -1,5 +1,19 @@
+/**
+ * Firebase Configuration and Database Integration
+ * Dynamic QR Code Generator with Analytics
+ * 
+ * Copyright © 2026 Holy Technologies GmbH, Hamburg, Germany
+ * All rights reserved.
+ * 
+ * This software and its documentation are proprietary to Holy Technologies GmbH.
+ * Unauthorized copying, distribution, or use is strictly prohibited.
+ */
+
 // Firebase Configuration
 // Dynamic QR Code Generator Firebase Config
+// NOTE: Firebase client-side API keys are designed to be public and safe to expose
+// Security comes from Firebase Security Rules, not hiding this config
+// See: https://firebase.google.com/docs/projects/api-keys#api-keys-for-firebase-are-different
 const firebaseConfig = {
     apiKey: "AIzaSyAVlJFr94Fw2yO2WaD5BjuplpjnPvLnlXk",
     authDomain: "dynamic-qr-code-generato-9d566.firebaseapp.com",
