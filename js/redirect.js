@@ -7,6 +7,7 @@ class QRRedirectManager {
 
     getQRIdFromURL() {
         const urlParams = new URLSearchParams(window.location.search);
+        this.fallbackData = urlParams.get('data'); // Store fallback data if present
         return urlParams.get('id');
     }
 
@@ -16,45 +17,104 @@ class QRRedirectManager {
             return;
         }
 
+        // Add mobile debugging
+        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('Device type:', isMobile ? 'Mobile' : 'Desktop');
+        console.log('Looking for QR ID:', this.qrId);
+
         try {
             // Get QR code data from Firebase or localStorage
             let qrData = null;
+            let dataSource = 'none';
             
             // First try Firebase if available
             if (window.FirebaseManager && typeof window.FirebaseManager.getQRCode === 'function') {
                 try {
+                    console.log('Attempting Firebase access...');
                     qrData = await window.FirebaseManager.getQRCode(this.qrId);
+                    if (qrData) {
+                        dataSource = 'firebase';
+                        console.log('Data found in Firebase');
+                    }
                 } catch (error) {
-                    console.log('Firebase unavailable, trying localStorage fallback');
+                    console.log('Firebase unavailable:', error.message);
                 }
+            } else {
+                console.log('FirebaseManager not available');
             }
             
             // If Firebase failed, try localStorage fallback directly
             if (!qrData) {
+                console.log('Trying localStorage fallback...');
                 try {
-                    // Try to access localStorage directly with the same encryption key approach
-                    const localQRs = await SecurityUtils.CryptoManager.getItem('qr-codes') || {};
-                    qrData = localQRs[this.qrId] || null;
+                    // Check if SecurityUtils is available
+                    if (window.SecurityUtils && window.SecurityUtils.CryptoManager) {
+                        const localQRs = await window.SecurityUtils.CryptoManager.getItem('qr-codes') || {};
+                        qrData = localQRs[this.qrId] || null;
+                        if (qrData) {
+                            dataSource = 'encrypted_storage';
+                            console.log('Data found in encrypted localStorage');
+                        }
+                    } else {
+                        console.log('SecurityUtils not available, trying direct localStorage');
+                    }
                 } catch (error) {
-                    console.log('localStorage access failed:', error);
+                    console.log('Encrypted localStorage access failed:', error.message);
                     
                     // Final fallback - try unencrypted localStorage (legacy support)
                     try {
+                        console.log('Trying unencrypted localStorage...');
                         const unencryptedData = localStorage.getItem('qr-codes');
                         if (unencryptedData) {
                             const parsedData = JSON.parse(unencryptedData);
                             qrData = parsedData[this.qrId] || null;
+                            if (qrData) {
+                                dataSource = 'unencrypted_storage';
+                                console.log('Data found in unencrypted localStorage');
+                            }
                         }
                     } catch (legacyError) {
-                        console.log('Legacy localStorage also failed:', legacyError);
+                        console.log('Legacy localStorage also failed:', legacyError.message);
                     }
                 }
             }
             
             if (!qrData) {
-                this.showError('QR code not found or has expired. This may be due to a database connection issue.');
+                // Try URL fallback data (for mobile scanning when localStorage fails)
+                if (this.fallbackData) {
+                    try {
+                        console.log('Trying URL fallback data...');
+                        const decodedData = atob(decodeURIComponent(this.fallbackData));
+                        const fallbackQRData = JSON.parse(decodedData);
+                        
+                        // Convert to expected format
+                        qrData = {
+                            id: this.qrId,
+                            name: fallbackQRData.name,
+                            originalText: fallbackQRData.text,
+                            createdAt: fallbackQRData.created,
+                            scanCount: 0
+                        };
+                        dataSource = 'url_fallback';
+                        console.log('Data found in URL fallback');
+                    } catch (fallbackError) {
+                        console.log('URL fallback failed:', fallbackError.message);
+                    }
+                }
+            }
+            
+            if (!qrData) {
+                // Show detailed error for debugging
+                const errorMsg = isMobile 
+                    ? `QR code not found. This may be because mobile browsers have stricter security settings. Please try opening this link in your mobile browser instead of scanning.` 
+                    : 'QR code not found or has expired. This may be due to a database connection issue.';
+                
+                console.log('No data found. Checked sources: Firebase, encrypted storage, unencrypted storage');
+                this.showError(errorMsg);
                 return;
             }
+
+            console.log('Successfully found QR data from:', dataSource);
 
             // Try to increment scan count (if Firebase is available)
             try {
@@ -78,7 +138,10 @@ class QRRedirectManager {
 
         } catch (error) {
             console.error('Redirect error:', error);
-            this.showError('Unable to process your request. Please try again later.');
+            const errorMsg = isMobile 
+                ? `Mobile scanning error: ${error.message}. Please try copying the link instead of scanning.`
+                : `Unable to process your request: ${error.message}. Please try again later.`;
+            this.showError(errorMsg);
         }
     }
 
@@ -351,7 +414,7 @@ class QRRedirectManager {
         // If we have a fallback URL, show manual link
         if (this.qrId) {
             manualLink.style.display = 'inline-block';
-            manualLink.href = `mailto:support@example.com?subject=QR Code Error&body=QR ID: ${this.qrId}`;
+            manualLink.href = `mailto:datta@holy-technologies.com?subject=QR Code Error&body=QR ID: ${this.qrId}`;
             manualLink.textContent = 'Contact Support';
         }
     }

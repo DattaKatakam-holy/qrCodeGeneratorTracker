@@ -157,7 +157,19 @@ class QRGenerator {
             this.currentQRId = qrId;
             
             // Get redirect URL for QR code
-            const redirectUrl = FirebaseManager.getRedirectUrl(qrId);
+            let redirectUrl = FirebaseManager.getRedirectUrl(qrId);
+            
+            // If Firebase is unavailable, add fallback data to URL for mobile compatibility
+            if (!FirebaseStatus.isAvailable()) {
+                // Encode the essential data in the URL for mobile scanning
+                const fallbackData = btoa(JSON.stringify({
+                    text: text,
+                    name: name,
+                    created: Date.now()
+                }));
+                redirectUrl += `&data=${encodeURIComponent(fallbackData)}`;
+                console.log('Added fallback data to URL for mobile compatibility');
+            }
             
             // Generate QR code
             const canvas = await this.createQRCanvas(redirectUrl);
