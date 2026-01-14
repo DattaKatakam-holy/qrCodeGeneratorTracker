@@ -142,7 +142,7 @@ const FirebaseManager = {
             };
 
             // Try Firebase first, fallback to encrypted localStorage
-            if (FirebaseStatus.isAvailable()) {
+            if (typeof firebase !== 'undefined' && window.database) {
                 await window.database.ref('qr-codes/' + qrId).set({
                     ...qrData,
                     createdAt: firebase.database.ServerValue.TIMESTAMP
@@ -166,7 +166,7 @@ const FirebaseManager = {
     // Get QR code data
     async getQRCode(qrId) {
         try {
-            if (FirebaseStatus.isAvailable()) {
+            if (typeof firebase !== 'undefined' && window.database) {
                 const snapshot = await window.database.ref('qr-codes/' + qrId).once('value');
                 return snapshot.val();
             } else {
@@ -183,7 +183,7 @@ const FirebaseManager = {
     // Increment scan count
     async incrementScanCount(qrId) {
         try {
-            if (FirebaseStatus.isAvailable()) {
+            if (typeof firebase !== 'undefined' && window.database) {
                 const qrRef = window.database.ref('qr-codes/' + qrId);
                 await qrRef.transaction((currentData) => {
                     if (currentData) {
