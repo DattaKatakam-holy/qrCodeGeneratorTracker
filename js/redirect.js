@@ -29,8 +29,9 @@ class QRRedirectManager {
             await FirebaseManager.incrementScanCount(this.qrId);
             
             // Show brief loading message
+            const sanitizedText = SecurityUtils.truncateText(qrData.originalText, 50);
             document.querySelector('.redirect-container p').textContent = 
-                `Redirecting to: ${this.shortenText(qrData.originalText, 50)}`;
+                `Redirecting to: ${sanitizedText}`;
 
             // Redirect after a short delay (for tracking purposes)
             setTimeout(() => {
@@ -46,29 +47,99 @@ class QRRedirectManager {
     redirectToOriginal(originalText) {
         // Check if originalText is a valid URL
         if (this.isValidURL(originalText)) {
-            // Redirect to URL
-            window.location.href = originalText;
+            // Check if domain is whitelisted
+            if (this.isWhitelistedDomain(originalText)) {
+                // Safe redirect to whitelisted domain
+                window.location.href = originalText;
+            } else {
+                // Show confirmation for external domains
+                const confirmed = confirm(
+                    `This QR code wants to redirect you to an external website:\n\n${originalText}\n\nDo you want to continue?`
+                );
+                if (confirmed) {
+                    window.location.href = originalText;
+                } else {
+                    // Show content instead if user declines
+                    this.showTextContent(originalText);
+                }
+            }
         } else {
             // Display text content instead of redirecting
             this.showTextContent(originalText);
         }
     }
 
+    isWhitelistedDomain(url) {
+        const allowedDomains = [
+            'meet.google.com',
+            'zoom.us',
+            'teams.microsoft.com',
+            'webex.com',
+            'gotomeeting.com',
+            'youtube.com',
+            'www.youtube.com',
+            'docs.google.com',
+            'drive.google.com'
+        ];
+        
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname.toLowerCase();
+            
+            // Check exact match or subdomain of allowed domains
+            return allowedDomains.some(domain => {
+                return hostname === domain || hostname.endsWith('.' + domain);
+            });
+        } catch {
+            return false;
+        }
+    }
+
     isValidURL(string) {
         try {
-            new URL(string);
+            const url = new URL(string);
+            
+            // Only allow http and https protocols
+            if (!['http:', 'https:'].includes(url.protocol)) {
+                return false;
+            }
+            
+            // Block dangerous protocols and schemes
+            const dangerousPatterns = [
+                'javascript:',
+                'data:',
+                'vbscript:',
+                'file:',
+                'ftp:'
+            ];
+            
+            const lowerString = string.toLowerCase();
+            if (dangerousPatterns.some(pattern => lowerString.includes(pattern))) {
+                return false;
+            }
+            
             return true;
         } catch (_) {
             // Also check for common URL patterns without protocol
             if (string.includes('.com') || string.includes('.org') || 
                 string.includes('.net') || string.includes('www.')) {
-                return true;
+                
+                // Try to validate with https prefix
+                try {
+                    new URL('https://' + string);
+                    return true;
+                } catch {
+                    return false;
+                }
             }
             return false;
         }
     }
 
     showTextContent(text) {
+        const sanitizedText = SecurityUtils.sanitizeText(text);
+        const escapedForButton = SecurityUtils.escapeHTML(text).replace(/'/g, '&#39;');
+        
         document.body.innerHTML = `
             <div class="content-display">
                 <div class="content-container">
@@ -77,13 +148,13 @@ class QRRedirectManager {
                         <h1>QR Code Content</h1>
                     </div>
                     <div class="content-body">
-                        <div class="content-text">${this.escapeHTML(text)}</div>
+                        <div class="content-text">${sanitizedText}</div>
                     </div>
                     <div class="content-footer">
                         <button onclick="history.back()" class="back-btn">
                             <i class="fas fa-arrow-left"></i> Go Back
                         </button>
-                        <button onclick="this.copyContent('${this.escapeHTML(text)}')" class="copy-btn">
+                        <button onclick="this.copyContent('${escapedForButton}')" class="copy-btn">
                             <i class="fas fa-copy"></i> Copy Text
                         </button>
                     </div>

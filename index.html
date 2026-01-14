@@ -14,6 +14,13 @@
     <meta name="author" content="Holy Technologies GmbH, Hamburg, Germany">
     <meta name="copyright" content="© 2026 Holy Technologies GmbH. All rights reserved.">
     <meta name="description" content="Professional QR Code Generator with Analytics - Holy Technologies GmbH">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseapp.com https://*.firebasedatabase.app; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.firebaseapp.com https://*.firebasedatabase.app wss://*.firebasedatabase.app;">
+    <!-- Note: X-Frame-Options and frame-ancestors must be set via HTTP headers, not meta tags -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
     <title>Dynamic QR Code Generator - Holy Technologies GmbH</title>
     <link rel="icon" type="image/png" href="assets/websiteLogo.png">
     <link rel="apple-touch-icon" href="assets/websiteLogo.png">
@@ -165,10 +172,6 @@
                                 <strong>What is Error Correction?</strong>
                                 <p>Higher levels allow QR codes to be read even if partially damaged.</p>
                             </div>
-                            <div class="info-item">
-                                <strong>Recommended Size:</strong>
-                                <p>512x512 for most uses, 1024x1024 for printing.</p>
-                            </div>
                         </div>
                     </div>
                 </section>
@@ -225,11 +228,8 @@
         <footer class="footer">
             <div class="footer-content">
                 <p>&copy; 2026 <strong>Holy Technologies GmbH</strong>, Hamburg, Germany. All rights reserved.</p>
-                <p class="footer-subtitle">Professional QR Code Solutions with Advanced Analytics</p>
                 <div class="company-info">
                     <span class="company-location">🏢 Hamburg, Germany</span>
-                    <span class="separator">|</span>
-                    <span class="company-type">Technology Solutions Provider</span>
                 </div>
             </div>
         </footer>
@@ -244,9 +244,16 @@
     </div>
 
     <!-- Scripts -->
+    <script>
+        // Enforce HTTPS in production
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            location.replace('https:' + window.location.href.substring(window.location.protocol.length));
+        }
+    </script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="lib/qrcode.min.js"></script>
+    <script src="js/security-utils.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/qr-generator.js"></script>
 </body>

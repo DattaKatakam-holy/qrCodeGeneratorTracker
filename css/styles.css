@@ -986,13 +986,6 @@ body {
     opacity: 0.95;
 }
 
-.footer-subtitle {
-    font-size: clamp(0.8rem, 2vw, 0.9rem) !important;
-    opacity: 0.8 !important;
-    font-style: italic;
-    margin-bottom: 1rem !important;
-}
-
 .company-info {
     display: flex;
     justify-content: center;

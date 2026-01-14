@@ -96,49 +96,55 @@ class QRGenerator {
         }
     }
 
-    handleLogoUpload(event) {
+    async handleLogoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Please select a valid image file.');
-            return;
-        }
+        try {
+            // Comprehensive file validation
+            await SecurityUtils.validateImageFile(file);
 
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Please select an image smaller than 5MB.');
-            return;
-        }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // Create preview
+                this.customLogoPreview.innerHTML = `
+                    <img src="${SecurityUtils.escapeHTML(e.target.result)}" alt="Custom Logo" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px;">
+                `;
+                
+                // Set as selected logo
+                this.selectedLogo = e.target.result;
+                
+                // Update selection UI
+                this.logoOptions.forEach(option => option.classList.remove('selected'));
+            };
+            reader.readAsDataURL(file);
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            // Create preview
-            this.customLogoPreview.innerHTML = `
-                <img src="${e.target.result}" alt="Custom Logo" style="width: 80px; height: 80px; object-fit: cover; border-radius: 10px;">
-            `;
+        } catch (error) {
+            // Clear the file input
+            event.target.value = '';
             
-            // Set as selected logo
-            this.selectedLogo = e.target.result;
-            
-            // Update selection UI
-            this.logoOptions.forEach(option => option.classList.remove('selected'));
-        };
-        reader.readAsDataURL(file);
+            // Show user-friendly error
+            alert(`File upload failed: ${error.message}`);
+            console.error('File validation error:', error);
+        }
     }
 
     async generateQRCode() {
         const text = this.qrTextArea.value.trim();
         const name = this.qrNameInput.value.trim();
         
-        if (!text) {
-            alert('Please enter some text or a URL to generate QR code.');
+        // Check rate limiting first
+        if (window.rateLimiter && !window.rateLimiter.canMakeRequest()) {
+            const remaining = window.rateLimiter.getRemainingRequests();
+            alert(`Rate limit exceeded. You can create ${remaining} more QR codes in the next minute. Please wait before creating more QR codes.`);
             return;
         }
         
-        if (!name) {
-            alert('Please enter a name/reference for this QR code.');
+        try {
+            // Validate inputs
+            SecurityUtils.validateQRInput(text, name);
+        } catch (error) {
+            alert(error.message);
             return;
         }
 
@@ -384,19 +390,19 @@ class QRGenerator {
             }
 
             const recentHTML = recentQRs.map(qr => {
-                const shortText = qr.originalText.length > 40 ? 
-                    qr.originalText.substring(0, 40) + '...' : qr.originalText;
+                const shortText = SecurityUtils.truncateText(qr.originalText, 40);
+                const safeName = SecurityUtils.sanitizeText(qr.name) || 'Unnamed QR Code';
                 
                 return `
-                    <div class="recent-item" onclick="qrGenerator.loadQRCode('${qr.id}')">
+                    <div class="recent-item" onclick="qrGenerator.loadQRCode('${SecurityUtils.escapeHTML(qr.id)}')">
                         <div class="recent-qr">
-                            <canvas width="60" height="60" data-qr-id="${qr.id}"></canvas>
+                            <canvas width="60" height="60" data-qr-id="${SecurityUtils.escapeHTML(qr.id)}"></canvas>
                         </div>
                         <div class="recent-info">
-                            <div class="recent-name">${qr.name || 'Unnamed QR Code'}</div>
+                            <div class="recent-name">${safeName}</div>
                             <div class="recent-text">${shortText}</div>
                             <div class="recent-stats">
-                                Scans: ${qr.scanCount || 0} | Created: ${FirebaseManager.formatTimestamp(qr.createdAt).split(' ')[0]}
+                                Scans: ${parseInt(qr.scanCount) || 0} | Created: ${SecurityUtils.escapeHTML(FirebaseManager.formatTimestamp(qr.createdAt).split(' ')[0])}
                             </div>
                         </div>
                     </div>
