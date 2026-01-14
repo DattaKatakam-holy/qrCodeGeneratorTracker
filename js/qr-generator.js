@@ -1,6 +1,6 @@
 /**
  * QR Code Generator with Logo Overlay and Analytics
- * Dynamic QR Code Generator Application
+ * Holy QR Code Generator - Holy Technologies GmbH 
  * 
  * Copyright © 2026 Holy Technologies GmbH, Hamburg, Germany
  * All rights reserved.

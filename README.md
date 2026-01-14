@@ -1,4 +1,4 @@
-# Dynamic QR Code Generator
+# Holy QR Code Generator
 
 A modern web-based QR code generator with scan tracking capabilities. Generate QR codes with custom logos and track how many times they've been scanned.
 
@@ -158,7 +158,7 @@ When someone scans the QR:
 
 ## 🎉 You're Ready!
 
-Your dynamic QR code generator is now ready to use. Generate trackable QR codes for your meeting links and monitor engagement in real-time!
+Your Holy QR code generator is now ready to use. Generate trackable QR codes for your meeting links and monitor engagement in real-time!
 
 ---
 *Built with ❤️ using Firebase and GitHub Pages*

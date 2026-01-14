@@ -1,6 +1,6 @@
 /**
  * Security Utilities - Input Sanitization and Validation
- * Dynamic QR Code Generator with Analytics
+ * Holy QR Code Generator - Holy Technologies GmbH
  * 
  * Copyright © 2026 Holy Technologies GmbH, Hamburg, Germany
  * All rights reserved.

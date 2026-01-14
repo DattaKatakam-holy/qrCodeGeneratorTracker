@@ -1,6 +1,6 @@
 /**
  * Firebase Configuration and Database Integration
- * Dynamic QR Code Generator with Analytics
+ * Holy QR Code Generator - Holy Technologies GmbH
  * 
  * Copyright © 2026 Holy Technologies GmbH, Hamburg, Germany
  * All rights reserved.
@@ -10,7 +10,7 @@
  */
 
 // Firebase Configuration
-// Dynamic QR Code Generator Firebase Config
+// Holy QR Code Generator Firebase Config
 //
 // SECURITY NOTE: For client-side web applications, Firebase configuration including
 // API keys MUST be public as they're downloaded to users' browsers. Security comes
