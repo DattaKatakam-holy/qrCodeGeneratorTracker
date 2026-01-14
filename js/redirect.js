@@ -7,7 +7,6 @@ class QRRedirectManager {
 
     getQRIdFromURL() {
         const urlParams = new URLSearchParams(window.location.search);
-        this.fallbackData = urlParams.get('data'); // Store fallback data if present
         return urlParams.get('id');
     }
 
@@ -17,140 +16,21 @@ class QRRedirectManager {
             return;
         }
 
-        // Add mobile debugging
-        const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        console.log('Device type:', isMobile ? 'Mobile' : 'Desktop');
-        console.log('Looking for QR ID:', this.qrId);
-
         try {
-            // Get QR code data from Firebase, localStorage, or URL fallback
-            let qrData = null;
-            let dataSource = 'none';
-            
-            // For mobile devices, prioritize URL fallback data first
-            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
-            if (isMobile && this.fallbackData) {
-                console.log('Mobile device detected, trying URL fallback first...');
-                try {
-                    const decodedData = atob(decodeURIComponent(this.fallbackData));
-                    const fallbackQRData = JSON.parse(decodedData);
-                    
-                    // Convert to expected format
-                    qrData = {
-                        id: this.qrId,
-                        name: fallbackQRData.name,
-                        originalText: fallbackQRData.text,
-                        createdAt: fallbackQRData.created,
-                        scanCount: 0
-                    };
-                    dataSource = 'url_fallback';
-                    console.log('Data found in URL fallback (mobile priority)');
-                } catch (fallbackError) {
-                    console.log('URL fallback failed:', fallbackError.message);
-                }
-            }
-            
-            // If no URL fallback data or not mobile, try Firebase
-            if (!qrData && window.FirebaseManager && typeof window.FirebaseManager.getQRCode === 'function') {
-                try {
-                    console.log('Attempting Firebase access...');
-                    qrData = await window.FirebaseManager.getQRCode(this.qrId);
-                    if (qrData) {
-                        dataSource = 'firebase';
-                        console.log('Data found in Firebase');
-                    }
-                } catch (error) {
-                    console.log('Firebase unavailable:', error.message);
-                }
-            }
-            
-            // Try localStorage fallback if Firebase failed
-            if (!qrData) {
-                console.log('Trying localStorage fallback...');
-                try {
-                    // Check if SecurityUtils is available
-                    if (window.SecurityUtils && window.SecurityUtils.CryptoManager) {
-                        const localQRs = await window.SecurityUtils.CryptoManager.getItem('qr-codes') || {};
-                        qrData = localQRs[this.qrId] || null;
-                        if (qrData) {
-                            dataSource = 'encrypted_storage';
-                            console.log('Data found in encrypted localStorage');
-                        }
-                    } else {
-                        console.log('SecurityUtils not available, trying direct localStorage');
-                    }
-                } catch (error) {
-                    console.log('Encrypted localStorage access failed:', error.message);
-                    
-                    // Try unencrypted localStorage (legacy support)
-                    try {
-                        console.log('Trying unencrypted localStorage...');
-                        const unencryptedData = localStorage.getItem('qr-codes');
-                        if (unencryptedData) {
-                            const parsedData = JSON.parse(unencryptedData);
-                            qrData = parsedData[this.qrId] || null;
-                            if (qrData) {
-                                dataSource = 'unencrypted_storage';
-                                console.log('Data found in unencrypted localStorage');
-                            }
-                        }
-                    } catch (legacyError) {
-                        console.log('Legacy localStorage also failed:', legacyError.message);
-                    }
-                }
-            }
-            
-            // Final fallback - try URL data if not already tried (for non-mobile)
-            if (!qrData && this.fallbackData && !isMobile) {
-                try {
-                    console.log('Trying URL fallback data...');
-                    const decodedData = atob(decodeURIComponent(this.fallbackData));
-                    const fallbackQRData = JSON.parse(decodedData);
-                    
-                    // Convert to expected format
-                    qrData = {
-                        id: this.qrId,
-                        name: fallbackQRData.name,
-                        originalText: fallbackQRData.text,
-                        createdAt: fallbackQRData.created,
-                        scanCount: 0
-                    };
-                    dataSource = 'url_fallback';
-                    console.log('Data found in URL fallback');
-                } catch (fallbackError) {
-                        console.log('URL fallback failed:', fallbackError.message);
-                    }
-                }
-            }
+            // Get QR code data from Firebase
+            const qrData = await FirebaseManager.getQRCode(this.qrId);
             
             if (!qrData) {
-                // Show detailed error for debugging
-                const errorMsg = isMobile 
-                    ? `QR code not found. This may be because mobile browsers have stricter security settings. Please try opening this link in your mobile browser instead of scanning.` 
-                    : 'QR code not found or has expired. This may be due to a database connection issue.';
-                
-                console.log('No data found. Checked sources: Firebase, encrypted storage, unencrypted storage');
-                this.showError(errorMsg);
+                this.showError('QR code not found or has expired.');
                 return;
             }
 
-            console.log('Successfully found QR data from:', dataSource);
-
-            // Try to increment scan count (if Firebase is available)
-            try {
-                if (window.FirebaseManager && typeof window.FirebaseManager.incrementScanCount === 'function') {
-                    await window.FirebaseManager.incrementScanCount(this.qrId);
-                }
-            } catch (error) {
-                console.log('Could not increment scan count (Firebase unavailable):', error);
-                // Continue anyway - scanning still works without analytics
-            }
+            // Increment scan count
+            await FirebaseManager.incrementScanCount(this.qrId);
             
             // Show brief loading message
-            const sanitizedText = SecurityUtils.truncateText(qrData.originalText, 50);
             document.querySelector('.redirect-container p').textContent = 
-                `Redirecting to: ${sanitizedText}`;
+                `Redirecting to: ${this.shortenText(qrData.originalText, 50)}`;
 
             // Redirect after a short delay (for tracking purposes)
             setTimeout(() => {
@@ -159,109 +39,36 @@ class QRRedirectManager {
 
         } catch (error) {
             console.error('Redirect error:', error);
-            const errorMsg = isMobile 
-                ? `Mobile scanning error: ${error.message}. Please try copying the link instead of scanning.`
-                : `Unable to process your request: ${error.message}. Please try again later.`;
-            this.showError(errorMsg);
+            this.showError('Unable to process your request. Please try again.');
         }
     }
 
     redirectToOriginal(originalText) {
         // Check if originalText is a valid URL
         if (this.isValidURL(originalText)) {
-            // Check if domain is whitelisted
-            if (this.isWhitelistedDomain(originalText)) {
-                // Safe redirect to whitelisted domain
-                window.location.href = originalText;
-            } else {
-                // Show confirmation for external domains
-                const confirmed = confirm(
-                    `This QR code wants to redirect you to an external website:\n\n${originalText}\n\nDo you want to continue?`
-                );
-                if (confirmed) {
-                    window.location.href = originalText;
-                } else {
-                    // Show content instead if user declines
-                    this.showTextContent(originalText);
-                }
-            }
+            // Redirect to URL
+            window.location.href = originalText;
         } else {
             // Display text content instead of redirecting
             this.showTextContent(originalText);
         }
     }
 
-    isWhitelistedDomain(url) {
-        const allowedDomains = [
-            'meet.google.com',
-            'zoom.us',
-            'teams.microsoft.com',
-            'webex.com',
-            'gotomeeting.com',
-            'youtube.com',
-            'www.youtube.com',
-            'docs.google.com',
-            'drive.google.com'
-        ];
-        
-        try {
-            const urlObj = new URL(url);
-            const hostname = urlObj.hostname.toLowerCase();
-            
-            // Check exact match or subdomain of allowed domains
-            return allowedDomains.some(domain => {
-                return hostname === domain || hostname.endsWith('.' + domain);
-            });
-        } catch {
-            return false;
-        }
-    }
-
     isValidURL(string) {
         try {
-            const url = new URL(string);
-            
-            // Only allow http and https protocols
-            if (!['http:', 'https:'].includes(url.protocol)) {
-                return false;
-            }
-            
-            // Block dangerous protocols and schemes
-            const dangerousPatterns = [
-                'javascript:',
-                'data:',
-                'vbscript:',
-                'file:',
-                'ftp:'
-            ];
-            
-            const lowerString = string.toLowerCase();
-            if (dangerousPatterns.some(pattern => lowerString.includes(pattern))) {
-                return false;
-            }
-            
+            new URL(string);
             return true;
         } catch (_) {
             // Also check for common URL patterns without protocol
             if (string.includes('.com') || string.includes('.org') || 
                 string.includes('.net') || string.includes('www.')) {
-                
-                // Try to validate with https prefix
-                try {
-                    new URL('https://' + string);
-                    return true;
-                } catch {
-                    return false;
-                }
+                return true;
             }
             return false;
         }
     }
 
     showTextContent(text) {
-        const sanitizedText = SecurityUtils.sanitizeText(text);
-        const escapedForButton = SecurityUtils.escapeHTML(text).replace(/'/g, '&#39;');
-        
         document.body.innerHTML = `
             <div class="content-display">
                 <div class="content-container">
@@ -270,13 +77,13 @@ class QRRedirectManager {
                         <h1>QR Code Content</h1>
                     </div>
                     <div class="content-body">
-                        <div class="content-text">${sanitizedText}</div>
+                        <div class="content-text">${this.escapeHTML(text)}</div>
                     </div>
                     <div class="content-footer">
                         <button onclick="history.back()" class="back-btn">
                             <i class="fas fa-arrow-left"></i> Go Back
                         </button>
-                        <button onclick="this.copyContent('${escapedForButton}')" class="copy-btn">
+                        <button onclick="this.copyContent('${this.escapeHTML(text)}')" class="copy-btn">
                             <i class="fas fa-copy"></i> Copy Text
                         </button>
                     </div>
@@ -435,7 +242,7 @@ class QRRedirectManager {
         // If we have a fallback URL, show manual link
         if (this.qrId) {
             manualLink.style.display = 'inline-block';
-            manualLink.href = `mailto:datta@holy-technologies.com?subject=QR Code Error&body=QR ID: ${this.qrId}`;
+            manualLink.href = `mailto:support@example.com?subject=QR Code Error&body=QR ID: ${this.qrId}`;
             manualLink.textContent = 'Contact Support';
         }
     }
