@@ -4,12 +4,37 @@
  * 
  * Copyright © 2026 Holy Technologies GmbH, Hamburg, Germany
  * All rights reserved.
+ * 
+ * This module provides comprehensive security utilities for:
+ * - XSS prevention through HTML escaping
+ * - Input validation for QR code content
+ * - File upload security validation  
+ * - Encrypted local storage management
+ * - Content sanitization for safe display
  */
 
-// Simple but effective HTML sanitization
+/**
+ * SecurityUtils - Centralized security utilities object
+ * 
+ * PURPOSE: Provides security functions to prevent XSS attacks, validate inputs,
+ * and secure file uploads across the QR code generator application
+ * 
+ * USAGE: All user-facing content must be processed through SecurityUtils
+ * before display or storage to prevent security vulnerabilities
+ */
 const SecurityUtils = {
     
-    // Escape HTML entities to prevent XSS
+    /**
+     * Escape HTML entities to prevent XSS attacks
+     * 
+     * WHY: Prevents malicious script injection when displaying user content
+     * WHEN: Called automatically by sanitizeText() and manually for safe HTML display
+     * HOW: Uses browser's native textContent property to escape HTML entities
+     * USED BY: sanitizeText(), recent QR code display, error messages
+     * 
+     * @param {string} text - Raw text that might contain HTML entities
+     * @returns {string} - HTML-escaped safe text
+     */
     escapeHTML(text) {
         if (!text) return '';
         
@@ -18,7 +43,17 @@ const SecurityUtils = {
         return div.innerHTML;
     },
     
-    // Sanitize text for safe HTML insertion
+    /**
+     * Comprehensive text sanitization for safe HTML insertion
+     * 
+     * WHY: Provides layered security against XSS by escaping HTML and removing dangerous patterns
+     * WHEN: Called before displaying any user-generated content (QR names, text content)
+     * HOW: First escapes HTML, then removes script tags, JavaScript URIs, and event handlers
+     * USED BY: QR code display, recent QR list generation, form validation
+     * 
+     * @param {string} text - Raw text that needs sanitization
+     * @returns {string} - Sanitized text safe for HTML insertion
+     */
     sanitizeText(text) {
         if (!text) return '';
         
@@ -33,7 +68,18 @@ const SecurityUtils = {
         return sanitized;
     },
     
-    // Truncate text safely
+    /**
+     * Safely truncate text for UI display
+     * 
+     * WHY: Prevents UI layout issues from long text while maintaining security
+     * WHEN: Called when displaying QR content in recent lists or previews
+     * HOW: Sanitizes first, then truncates to specified length with ellipsis
+     * USED BY: Recent QR codes list, preview displays, mobile responsive layouts
+     * 
+     * @param {string} text - Text to truncate
+     * @param {number} maxLength - Maximum length before truncation (default: 40)
+     * @returns {string} - Sanitized and truncated text with ellipsis if needed
+     */
     truncateText(text, maxLength = 40) {
         if (!text) return '';
         
@@ -42,7 +88,17 @@ const SecurityUtils = {
         return sanitized.substring(0, maxLength - 3) + '...';
     },
     
-    // Validate file signature (magic bytes)
+    /**
+     * Validate image file signature using magic bytes
+     * 
+     * WHY: Prevents malicious files disguised as images from being uploaded
+     * WHEN: Called during file upload before processing custom logos
+     * HOW: Reads first 12 bytes of file and compares against known image signatures
+     * USED BY: validateImageFile() for comprehensive file validation
+     * 
+     * @param {File} file - File object to validate
+     * @returns {string|false} - Image format (jpeg/png/gif/webp) or false if invalid
+     */
     async validateImageSignature(file) {
         const buffer = await file.slice(0, 12).arrayBuffer();
         const bytes = new Uint8Array(buffer);
@@ -67,7 +123,18 @@ const SecurityUtils = {
         return false;
     },
     
-    // Comprehensive file validation
+    /**
+     * Comprehensive image file validation
+     * 
+     * WHY: Provides multiple layers of security validation for uploaded image files
+     * WHEN: Called when user uploads custom logo files
+     * HOW: Validates MIME type, file size, magic bytes, and filename patterns
+     * USED BY: QR generator logo upload functionality, file input handlers
+     * 
+     * @param {File} file - File object from input element
+     * @throws {Error} - Descriptive error message if validation fails
+     * @returns {boolean} - true if file passes all validation checks
+     */
     async validateImageFile(file) {
         // Basic checks
         if (!file) {
@@ -102,7 +169,19 @@ const SecurityUtils = {
         return true;
     },
     
-    // Validate QR text input
+    /**
+     * Validate QR code text input and name for security and length requirements
+     * 
+     * WHY: Ensures QR code content meets security and usability standards
+     * WHEN: Called before generating any QR code to validate user input
+     * HOW: Checks length limits, validates content against malicious patterns
+     * USED BY: QR generator generateQRCode() function, form validation
+     * 
+     * @param {string} text - QR code content (URL, text, etc.)
+     * @param {string} name - User-defined name/reference for the QR code
+     * @throws {Error} - Descriptive error message if validation fails
+     * @returns {boolean} - true if input passes all validation checks
+     */
     validateQRInput(text, name) {
         // Length validation
         if (!text || text.trim().length === 0) {
@@ -143,9 +222,25 @@ const SecurityUtils = {
         return true;
     },
     
-    // Crypto utilities for secure local storage
+    /**
+     * CryptoManager - Secure encrypted localStorage management
+     * 
+     * WHY: Provides client-side encryption for sensitive data storage
+     * WHEN: Used when Firebase is unavailable for offline functionality
+     * HOW: Uses Web Crypto API with AES-GCM encryption and persistent keys
+     * USED BY: Firebase fallback storage, QR code data persistence
+     */
     CryptoManager: {
-        // Generate or get persistent encryption key (works across pages)
+        /**
+         * Generate or retrieve persistent encryption key for cross-page security
+         * 
+         * WHY: Enables encrypted data sharing between QR generator and redirect pages
+         * WHEN: Called automatically by setItem() and getItem() operations
+         * HOW: Generates new AES-GCM key or imports existing key from localStorage
+         * USED BY: Internal CryptoManager methods for data encryption/decryption
+         * 
+         * @returns {CryptoKey} - AES-GCM encryption key for secure operations
+         */
         async getOrCreateKey() {
             let keyData = localStorage.getItem('app_crypto_key_v2');
             
@@ -176,7 +271,17 @@ const SecurityUtils = {
             }
         },
         
-        // Secure localStorage wrapper
+        /**
+         * Secure encrypted localStorage setter with fallback
+         * 
+         * WHY: Protects sensitive QR code data when stored locally
+         * WHEN: Called when Firebase is unavailable or for offline backup
+         * HOW: Encrypts data with AES-GCM, falls back to plain storage if crypto fails
+         * USED BY: Firebase fallback storage, QR code data persistence
+         * 
+         * @param {string} key - Storage key identifier
+         * @param {any} data - Data to encrypt and store (will be JSON stringified)
+         */
         async setItem(key, data) {
             try {
                 const cryptoKey = await this.getOrCreateKey();
@@ -203,7 +308,17 @@ const SecurityUtils = {
             }
         },
         
-        // Secure localStorage getter
+        /**
+         * Secure encrypted localStorage getter with migration support
+         * 
+         * WHY: Retrieves encrypted data securely, with fallback for legacy data
+         * WHEN: Called when accessing stored QR code data offline
+         * HOW: Decrypts AES-GCM data, migrates unencrypted legacy data automatically
+         * USED BY: Firebase fallback retrieval, offline QR code access
+         * 
+         * @param {string} key - Storage key identifier
+         * @returns {any|null} - Decrypted data object or null if not found
+         */
         async getItem(key) {
             try {
                 const encrypted = localStorage.getItem(`encrypted_${key}`);
@@ -245,3 +360,4 @@ const SecurityUtils = {
 
 // Export for use in other scripts
 window.SecurityUtils = SecurityUtils;
+window.securityUtils = SecurityUtils; // Also provide lowercase alias for consistency
